@@ -87,15 +87,17 @@ app = FastAPI(
 # ---------------------------------------------------------------------------
 # CORS – allow the React frontend (Vercel / localhost)
 # ---------------------------------------------------------------------------
-ALLOWED_ORIGINS = os.getenv(
-    "ALLOWED_ORIGINS",
-    "http://localhost:3000,http://localhost:5173,https://explainai.vercel.app",
-).split(",")
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://explainai-alpha.vercel.app",
+    "https://explainai.vercel.app",
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
