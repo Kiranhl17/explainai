@@ -369,7 +369,9 @@ def compute_lime_explanation(
 
     instance = X_values[instance_index]
 
-    try:
+    # top_labels is only valid for classification
+    # For regression, omit it entirely
+    if model_info["is_classifier"]:
         explanation = explainer.explain_instance(
             data_row=instance,
             predict_fn=predict_fn,
@@ -377,10 +379,13 @@ def compute_lime_explanation(
             num_samples=num_samples,
             top_labels=1,
         )
-    except Exception as exc:
-        logger.error(f"LIME failed: {exc}", exc_info=True)
-        raise RuntimeError(f"LIME explanation failed: {exc}") from exc
-
+    else:
+        explanation = explainer.explain_instance(
+            data_row=instance,
+            predict_fn=predict_fn,
+            num_features=num_features,
+            num_samples=num_samples,
+        )
     # -------------------------------------------------------------------------
     # Serialize LIME output
     # -------------------------------------------------------------------------
@@ -399,26 +404,60 @@ def compute_lime_explanation(
     # Generate matplotlib plot
     plot_image = _generate_lime_plot(lime_data, instance_index)
 
-    # Local prediction from LIME surrogate
-    local_pred = explanation.local_pred
-    intercept = explanation.intercept[label]
-
-    return {
-        "explanation": lime_data,
-        "label": int(label),
-        "local_prediction": float(local_pred[0]) if local_pred is not None else None,
-        "intercept": float(intercept),
-        "instance_index": instance_index,
-        "num_samples_used": num_samples,
-        "plot_image": plot_image,
-        "interpretation": (
+    # ---------------------------------------------------------------
+    # Handle regression vs classification differently
+    # LIME regression uses explain_instance differently —
+    # no label index, coefficients accessed directly
+    # ---------------------------------------------------------------
+    if model_info["is_classifier"]:
+        label = explanation.available_labels()[0]
+        lime_features = explanation.as_list(label=label)
+        intercept = float(explanation.intercept[label])
+        local_pred = explanation.local_pred
+        local_prediction = float(local_pred[0]) if local_pred is not None else None
+        label_out = int(label)
+        interpretation = (
             f"LIME trained a local linear surrogate using {num_samples} perturbed instances "
             f"near instance #{instance_index}. Positive weights push toward class {label}; "
             f"negative weights push away. This explanation is LOCAL — it only describes "
             f"this specific prediction, not the model's global behaviour."
-        ),
-    }
+        )
+    else:
+        # Regression mode — no label index needed
+        lime_features = explanation.as_list()
+        intercept = float(explanation.intercept[1]) if hasattr(explanation.intercept, '__len__') else float(explanation.intercept)
+        local_pred = explanation.local_pred
+        local_prediction = float(local_pred[0]) if local_pred is not None else None
+        label_out = 0
+        interpretation = (
+            f"LIME trained a local linear surrogate using {num_samples} perturbed instances "
+            f"near instance #{instance_index}. Positive weights INCREASE the predicted value; "
+            f"negative weights DECREASE it. This explanation is LOCAL — it only describes "
+            f"this specific prediction, not the model's global behaviour."
+        )
 
+    lime_data = [
+        {
+            "feature_condition": cond,
+            "weight": float(weight),
+            "direction": "positive" if weight > 0 else "negative",
+        }
+        for cond, weight in lime_features
+    ]
+
+    # Generate matplotlib plot
+    plot_image = _generate_lime_plot(lime_data, instance_index)
+
+    return {
+        "explanation": lime_data,
+        "label": label_out,
+        "local_prediction": local_prediction,
+        "intercept": intercept,
+        "instance_index": instance_index,
+        "num_samples_used": num_samples,
+        "plot_image": plot_image,
+        "interpretation": interpretation,
+    }
 
 def _generate_lime_plot(lime_data: List[Dict], instance_index: int) -> str:
     """Render LIME feature weights as a horizontal bar chart."""
