@@ -4,6 +4,6 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "env": {
-    "VITE_API_URL": "https://your-backend.onrender.com/api"
+    "VITE_API_URL": "https://explainai-backend.onrender.com/api"
   }
 }
