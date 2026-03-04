@@ -124,10 +124,10 @@ def compute_shap_explanations(
     backend = model_info["explainer_backend"]
 
     try:
-    # ------------------------------------------------------------
-    # Use modern SHAP API (auto-detects model type)
-    # Works for tree, linear, kernel, binary, multiclass, regression
-    # ------------------------------------------------------------
+        # ------------------------------------------------------------
+        # Use modern SHAP API (auto-detects model type)
+        # Works for tree, linear, kernel, binary, multiclass, regression
+        # ------------------------------------------------------------
         explainer = shap.Explainer(model, X_values)
         shap_result = explainer(X_values)
 
@@ -160,6 +160,7 @@ def compute_shap_explanations(
     except Exception as exc:
         logger.error(f"SHAP computation failed: {exc}", exc_info=True)
         raise RuntimeError(f"SHAP computation failed: {exc}") from exc
+
     logger.info(
         f"SHAP values computed: shape={shap_values.shape} | base_value={base_value:.4f}"
     )
@@ -369,8 +370,9 @@ def compute_lime_explanation(
 
     instance = X_values[instance_index]
 
-    # top_labels is only valid for classification
-    # For regression, omit it entirely
+    # -------------------------------------------------------------------------
+    # top_labels is only valid for classification — omit for regression
+    # -------------------------------------------------------------------------
     if model_info["is_classifier"]:
         explanation = explainer.explain_instance(
             data_row=instance,
@@ -386,29 +388,12 @@ def compute_lime_explanation(
             num_features=num_features,
             num_samples=num_samples,
         )
+
     # -------------------------------------------------------------------------
-    # Serialize LIME output
+    # Serialize LIME output — handle regression vs classification separately
+    # Classification: uses label index to access coefficients
+    # Regression:     coefficients accessed directly without label index
     # -------------------------------------------------------------------------
-    label = explanation.available_labels()[0]
-    lime_features = explanation.as_list(label=label)
-
-    lime_data = [
-        {
-            "feature_condition": cond,
-            "weight": float(weight),
-            "direction": "positive" if weight > 0 else "negative",
-        }
-        for cond, weight in lime_features
-    ]
-
-    # Generate matplotlib plot
-    plot_image = _generate_lime_plot(lime_data, instance_index)
-
-    # ---------------------------------------------------------------
-    # Handle regression vs classification differently
-    # LIME regression uses explain_instance differently —
-    # no label index, coefficients accessed directly
-    # ---------------------------------------------------------------
     if model_info["is_classifier"]:
         label = explanation.available_labels()[0]
         lime_features = explanation.as_list(label=label)
@@ -425,7 +410,11 @@ def compute_lime_explanation(
     else:
         # Regression mode — no label index needed
         lime_features = explanation.as_list()
-        intercept = float(explanation.intercept[1]) if hasattr(explanation.intercept, '__len__') else float(explanation.intercept)
+        intercept = (
+            float(explanation.intercept[1])
+            if hasattr(explanation.intercept, "__len__")
+            else float(explanation.intercept)
+        )
         local_pred = explanation.local_pred
         local_prediction = float(local_pred[0]) if local_pred is not None else None
         label_out = 0
@@ -445,7 +434,6 @@ def compute_lime_explanation(
         for cond, weight in lime_features
     ]
 
-    # Generate matplotlib plot
     plot_image = _generate_lime_plot(lime_data, instance_index)
 
     return {
@@ -458,6 +446,7 @@ def compute_lime_explanation(
         "plot_image": plot_image,
         "interpretation": interpretation,
     }
+
 
 def _generate_lime_plot(lime_data: List[Dict], instance_index: int) -> str:
     """Render LIME feature weights as a horizontal bar chart."""
@@ -478,7 +467,7 @@ def _generate_lime_plot(lime_data: List[Dict], instance_index: int) -> str:
     ax.set_xlabel("LIME Feature Weight (local linear surrogate coefficient)", fontsize=10)
     ax.set_title(
         f"LIME Local Explanation — Instance #{instance_index}\n"
-        "Red=pushes toward positive class | Blue=pushes toward negative class",
+        "Red=increases predicted value | Blue=decreases predicted value",
         fontsize=11,
     )
     ax.grid(axis="x", alpha=0.3)
