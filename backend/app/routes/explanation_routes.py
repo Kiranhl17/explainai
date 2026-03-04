@@ -93,12 +93,13 @@ async def generate_explanations(request: Request, params: ExplanationRequest):
     # ===========================================================================
     # 1. SHAP — Global + Local
     # ===========================================================================
+    X_shap = X.head(50)  # limit to 50 rows for speed on free tier
     try:
         if state.shap_values is None:
             logger.info(f"[{session_id}] Computing SHAP values…")
             shap_result = compute_shap_explanations(
                 model=model,
-                X=X.head(50),
+                X=X_shap,
                 model_info=model_info,
                 background_sample_size=min(params.background_sample_size, 50),
             )
