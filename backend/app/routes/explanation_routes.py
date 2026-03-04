@@ -98,9 +98,9 @@ async def generate_explanations(request: Request, params: ExplanationRequest):
             logger.info(f"[{session_id}] Computing SHAP values…")
             shap_result = compute_shap_explanations(
                 model=model,
-                X=X,
+                X=X.head(50),
                 model_info=model_info,
-                background_sample_size=params.background_sample_size,
+                background_sample_size=min(params.background_sample_size, 50),
             )
             state.shap_values = shap_result["shap_values"]
             state.shap_base_value = shap_result["base_value"]
@@ -132,11 +132,11 @@ async def generate_explanations(request: Request, params: ExplanationRequest):
         logger.info(f"[{session_id}] Computing LIME explanation for instance {instance_idx}…")
         lime_result = compute_lime_explanation(
             model=model,
-            X=X,
+            X=X.head(50),
             model_info=model_info,
             instance_index=instance_idx,
-            num_features=params.num_lime_features,
-            num_samples=params.num_lime_samples,
+            num_features=10,
+            num_samples=1000,
         )
         state.lime_explanation = lime_result
     except Exception as exc:
