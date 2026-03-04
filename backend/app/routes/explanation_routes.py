@@ -95,7 +95,7 @@ async def generate_explanations(request: Request, params: ExplanationRequest):
     # ===========================================================================
     X_shap = X.head(50)  # limit to 50 rows for speed on free tier
     try:
-        if state.shap_values is None:
+        if state.shap_values is None or state.shap_values.shape[0] != len(X_shap):
             logger.info(f"[{session_id}] Computing SHAP values…")
             shap_result = compute_shap_explanations(
                 model=model,
@@ -110,12 +110,12 @@ async def generate_explanations(request: Request, params: ExplanationRequest):
             logger.info(f"[{session_id}] Using cached SHAP values")
             shap_explainer_type = f"shap.{model_info['explainer_backend'].capitalize()}Explainer"
 
-        shap_summary_plot = generate_shap_summary_plot(state.shap_values, X)
+        shap_summary_plot = generate_shap_summary_plot(state.shap_values, X_shap)
         shap_bar_plot = generate_shap_bar_plot(state.shap_values, state.feature_names)
         shap_force_data = generate_shap_force_plot_data(
             shap_values=state.shap_values,
             base_value=state.shap_base_value,
-            X=X,
+            X=X_shap,
             instance_index=instance_idx,
         )
 
