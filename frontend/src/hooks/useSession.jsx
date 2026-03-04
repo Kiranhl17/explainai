@@ -17,7 +17,7 @@ const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 export const createApiClient = (sessionId) => {
   const client = axios.create({
     baseURL: API_BASE,
-    timeout: 120000, // 2 min timeout for SHAP computation
+    timeout: 3000000, // 2 min timeout for SHAP computation
     headers: {
       "Content-Type": "application/json",
       ...(sessionId ? { "X-Session-ID": sessionId } : {}),

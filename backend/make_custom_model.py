@@ -7,9 +7,10 @@ from sklearn.preprocessing import LabelEncoder
 
 # ─────────────────────────────────────────
 # EDIT THESE THREE LINES ONLY
-CSV_FILE    = "Middle_East_Economic_Data_1990_2024_with_Oil.csv"
-TARGET_COL  = "Life_expectancy_years"
-DROP_COLS   = ["Country", "Country_Code", "Year"]
+CSV_FILE    = "ev_battery_qc_data_2026_kaggle.csv"
+TARGET_COL  = "Ambient_Temp_C"
+DROP_COLS   = ["Cell_ID	Batch_ID", "Production_Line",	"Shift", "Supplier"
+]
 # ─────────────────────────────────────────
 
 print(f"Loading {CSV_FILE}...")
@@ -62,8 +63,8 @@ print(f"R² Score : {r2:.4f}  (1.0 = perfect)")
 print(f"MAE      : {mae:.4f} years average error")
 
 # Save model
-model_name = "middle_east_life_expectancy_model.pkl"
-data_name  = "middle_east_life_expectancy_data.csv"
+model_name = "ev_battery_qc_data_2026_kaggle.pkl"
+data_name  = "ev_battery_qc_data_2026_kaggle.csv"
 
 joblib.dump(model, model_name)
 print(f"\nSaved: {model_name}")
